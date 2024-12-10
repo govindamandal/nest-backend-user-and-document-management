@@ -61,12 +61,27 @@ export class UserService {
     return user;
   }
 
+  async findByEmail(email: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      select: ['id', 'email', 'name', 'role'],
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found.`);
+    }
+    return user;
+  }
+
   async update(id: number, updateUserDto: UpdateUserDto) {
     await this.userRepository.update(id, updateUserDto);
     return this.userRepository.findOneBy({ id });
   }
 
-  remove(id: number) {
-    return this.userRepository.delete(id);
+  async remove(id: number) {
+    const user = await this.findOne(id);
+    if (user) {
+      return await this.userRepository.delete(id);
+    }
   }
 }
