@@ -6,7 +6,7 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
@@ -18,11 +18,12 @@ export class UserService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { email, password } = createUserDto;
+    const { email, password, role, name } = createUserDto;
 
     const existingUser = await this.userRepository.findOne({
       where: { email },
     });
+
     if (existingUser) {
       throw new BadRequestException('Email already exists');
     }
@@ -31,8 +32,10 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = this.userRepository.create({
-      ...createUserDto,
+      email,
+      name,
       password: hashedPassword,
+      role: role || UserRole.VIEWER,
     });
 
     const savedUser = await this.userRepository.save(newUser);
@@ -40,12 +43,18 @@ export class UserService {
     return { ...savedUser, password: null };
   }
 
-  findAll() {
-    return this.userRepository.find();
+  async findAll() {
+    return await this.userRepository.find({
+      select: ['id', 'email', 'name', 'role'],
+    });
   }
 
   async findOne(id: number): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id } });
+    const user = await this.userRepository.findOne({
+      select: ['id', 'email', 'name', 'role'],
+      where: { id },
+    });
+
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found.`);
     }
